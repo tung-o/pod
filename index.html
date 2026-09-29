@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Shopper: ภารกิจซูเปอร์มาร์เก็ตแนวคิดเชิงคำนวณ</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Kanit & Press Start 2P for playful educational style -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #f0fdf4;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .pixel-font {
+            font-family: 'Press Start 2P', monospace;
+        }
+        /* Custom Arcade Shadows & Borders */
+        .arcade-box {
+            border: 4px solid #1e293b;
+            box-shadow: 6px 6px 0px #0f172a;
+        }
+        .arcade-box-sm {
+            border: 3px solid #1e293b;
+            box-shadow: 3px 3px 0px #0f172a;
+        }
+        .arcade-btn {
+            border: 3px solid #1e293b;
+            box-shadow: 0 4px 0 #1e293b;
+            transition: all 0.1s ease;
+        }
+        .arcade-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 #1e293b;
+        }
+        .arcade-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #1e293b;
+        }
+        /* Grid Tile transitions */
+        .grid-cell {
+            transition: background-color 0.25s ease, transform 0.2s ease;
+        }
+        /* Cart orientation styles */
+        .cart-north { transform: rotate(0deg); }
+        .cart-east { transform: rotate(90deg); }
+        .cart-south { transform: rotate(180deg); }
+        .cart-west { transform: rotate(270deg); }
+
+        /* Floating Bob Animation */
+        @keyframes floatSlow {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+        .animate-floating {
+            animation: floatSlow 2.5s infinite ease-in-out;
+        }
+        /* Pulsing Glow for target */
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); }
+            50% { box-shadow: 0 0 0 10px rgba(234, 179, 8, 0); }
+        }
+        .pulse-item {
+            animation: pulseGlow 1.8s infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800 flex flex-col justify-between selection:bg-yellow-300">
+
+    <header class="bg-emerald-600 border-b-4 border-slate-900 text-white p-3 md:px-8 sticky top-0 z-40 shadow-md">
+        <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-yellow-400 border-2 border-slate-900 rounded-lg flex items-center justify-center text-slate-900 shadow">
+                    <i class="fa-solid fa-cart-shopping text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-base md:text-xl tracking-wide flex items-center gap-2">
+                        SMART SHOPPER <span class="text-xs bg-yellow-300 text-slate-900 px-2 py-0.5 rounded-full font-bold uppercase">ม.1 Edition</span>
+                    </h1>
+                    <p class="text-xs text-emerald-100 hidden sm:block">ภารกิจแก้ปัญหาซูเปอร์มาร์เก็ตด้วย Computational Thinking</p>
+                </div>
+            </div>
+
+            <!-- Score and CT Mastery Bar -->
+            <div class="flex items-center gap-3 md:gap-6 bg-emerald-800 px-4 py-2 rounded-xl border-2 border-slate-900">
+                <div class="flex flex-col">
+                    <div class="flex justify-between text-xs font-semibold mb-1">
+                        <span class="text-yellow-300"><i class="fa-solid fa-brain mr-1"></i> CT Mastery</span>
+                        <span id="score-text" class="font-mono text-white">0%</span>
+                    </div>
+                    <div class="w-28 sm:w-44 bg-slate-900 h-3 rounded-full overflow-hidden p-0.5 border border-slate-700">
+                        <div id="ct-progress-bar" class="bg-yellow-400 h-full rounded-full transition-all duration-500" style="width: 0%;"></div>
+                    </div>
+                </div>
+                <div class="text-right pl-2 border-l border-emerald-700">
+                    <span class="text-xs text-emerald-200 block">ด่านปัจจุบัน</span>
+                    <span id="current-stage-badge" class="font-bold text-sm text-yellow-300">1 / 3</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto w-full px-3 py-4 md:py-6 flex-grow flex flex-col justify-center items-center">
+
+        <!-- INTRO SCREEN -->
+        <div id="intro-screen" class="w-full max-w-2xl bg-white arcade-box rounded-2xl p-6 md:p-8 text-center">
+            <div class="w-20 h-20 bg-yellow-100 border-4 border-slate-900 rounded-3xl mx-auto flex items-center justify-center text-4xl mb-4 shadow animate-floating">
+                🛒
+            </div>
+            <h2 class="text-2xl md:text-3xl font-black text-slate-800 mb-2">ยินดีต้อนรับสู่ภารกิจ Smart Shopper!</h2>
+            <p class="text-slate-600 mb-6 text-sm md:text-base leading-relaxed">
+                วันหยุดนี้ คุณได้รับภารกิจช่วยคุณแม่ไปซื้อของที่ <strong class="text-emerald-700">Supermarket</strong> 
+                โดยต้องใช้ <strong>แนวคิดเชิงคำนวณ 4 ด้าน</strong> เพื่อคิด วิเคราะห์ และเขียนชุดคำสั่งแก้ปัญหาให้คุ้มค่าและรวดเร็วที่สุด!
+            </p>
+
+            <!-- 4 Pillars Preview -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6 text-left">
+                <div class="bg-blue-50 border-2 border-blue-200 p-2.5 rounded-xl">
+                    <span class="text-xs font-bold text-blue-700 block">1. Decomposition</span>
+                    <span class="text-[11px] text-slate-500">แตกปัญหาเป็นส่วนย่อย</span>
+                </div>
+                <div class="bg-amber-50 border-2 border-amber-200 p-2.5 rounded-xl">
+                    <span class="text-xs font-bold text-amber-700 block">2. Pattern</span>
+                    <span class="text-[11px] text-slate-500">มองหารูปแบบโปรโมชัน</span>
+                </div>
+                <div class="bg-purple-50 border-2 border-purple-200 p-2.5 rounded-xl">
+                    <span class="text-xs font-bold text-purple-700 block">3. Abstraction</span>
+                    <span class="text-[11px] text-slate-500">คัดกรองเฉพาะข้อมูลสำคัญ</span>
+                </div>
+                <div class="bg-emerald-50 border-2 border-emerald-200 p-2.5 rounded-xl">
+                    <span class="text-xs font-bold text-emerald-700 block">4. Algorithm</span>
+                    <span class="text-[11px] text-slate-500">วางลำดับคำสั่งเส้นทาง</span>
+                </div>
+            </div>
+
+            <button onclick="startGame()" class="arcade-btn bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-lg px-8 py-3.5 rounded-xl w-full sm:w-auto inline-flex items-center justify-center gap-2">
+                <span>เริ่มภารกิจเลย!</span>
+                <i class="fa-solid fa-play"></i>
+            </button>
+        </div>
+
+        <!-- STAGE 1: ABSTRACTION CHALLENGE -->
+        <div id="stage-1" class="w-full max-w-3xl hidden">
+            <div class="bg-white arcade-box rounded-2xl p-5 md:p-7">
+                <div class="flex flex-wrap items-center justify-between border-b pb-3 mb-4 gap-2">
+                    <div>
+                        <span class="px-2.5 py-1 bg-purple-100 text-purple-800 text-xs font-bold rounded-lg border border-purple-300">
+                            ด่านที่ 1 : Abstraction (การกำหนดสาระสำคัญ)
+                        </span>
+                        <h2 class="text-xl md:text-2xl font-black text-slate-800 mt-1">🏷️ ป้ายสินค้ารกตา คัดมาเฉพาะที่ต้องจ่าย!</h2>
+                    </div>
+                    <span class="text-xs bg-slate-100 px-3 py-1 rounded-full text-slate-600 font-semibold border">
+                        เป้าหมาย: เลือก 2 ข้อมูลสำคัญ
+                    </span>
+                </div>
+
+                <p class="text-sm text-slate-600 mb-4">
+                    ป้ายสินค้าชิ้นนี้มีข้อมูลปะปนกันอยู่เต็มไปหมด! ให้น้องๆ ใช้แนวคิด <strong>Abstraction</strong> 
+                    ตัดสิ่งที่ไม่จำเป็นออก แล้วคลิกเลือก <strong class="text-purple-700">เฉพาะข้อมูล 2 อย่างที่จำเป็นที่สุดสำหรับใช้คำนวณเงินที่ต้องจ่ายจริง</strong>
+                </p>
+
+                <!-- Cluttered Product Card Simulation -->
+                <div class="bg-gradient-to-br from-amber-100 via-orange-50 to-yellow-100 border-4 border-dashed border-amber-400 p-4 rounded-2xl mb-6 relative">
+                    <div class="absolute -top-3 right-4 bg-red-500 text-white text-[11px] px-2 py-0.5 rounded font-bold uppercase shadow">
+                        ลดกระหน่ำซัมเมอร์!
+                    </div>
+
+                    <div class="text-center mb-3">
+                        <span class="text-5xl">🥣</span>
+                        <h3 class="font-black text-lg text-slate-800">ซีเรียลข้าวสาลีอบกรอบ ตราซูเปอร์แฮปปี้</h3>
+                    </div>
+
+                    <!-- Clickable Data Tags -->
+                    <div id="tags-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Guidance and Submission -->
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                    <div class="text-xs text-slate-500">
+                        <i class="fa-solid fa-circle-info text-blue-500 mr-1"></i>
+                        เลือกแล้ว: <span id="s1-selected-count" class="font-bold text-slate-800 text-sm">0</span> / 2 ชิ้น
+                    </div>
+                    <button id="s1-submit-btn" onclick="checkStage1()" disabled class="arcade-btn bg-slate-300 cursor-not-allowed text-white font-bold py-2.5 px-6 rounded-xl text-sm w-full sm:w-auto">
+                        ตรวจคำตอบ <i class="fa-solid fa-arrow-right ml-1"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STAGE 2: PATTERN RECOGNITION CHALLENGE -->
+        <div id="stage-2" class="w-full max-w-3xl hidden">
+            <div class="bg-white arcade-box rounded-2xl p-5 md:p-7">
+                <div class="flex flex-wrap items-center justify-between border-b pb-3 mb-4 gap-2">
+                    <div>
+                        <span class="px-2.5 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded-lg border border-amber-300">
+                            ด่านที่ 2 : Pattern Recognition (การหารูปแบบ)
+                        </span>
+                        <h2 class="text-xl md:text-2xl font-black text-slate-800 mt-1">🥛 เปรียบเทียบโปรโมชันนมสดรสจืด</h2>
+                    </div>
+                    <span class="text-xs bg-slate-100 px-3 py-1 rounded-full text-slate-600 font-semibold border">
+                        เป้าหมาย: หาตัวเลือกที่คุ้มที่สุด
+                    </span>
+                </div>
+
+                <p class="text-sm text-slate-600 mb-4">
+                    ซูเปอร์มาร์เก็ตมีนมสดกล่องยี่ห้อโปรดจัดโปรโมชัน 2 แบบ ให้น้องๆ ใช้ทักษะ <strong>Decomposition & Pattern Recognition</strong> 
+                    วิเคราะห์หาราคาเฉลี่ยต่อหน่วย (บาทต่อกล่อง) ของแต่ละโปรโมชัน เพื่อเลือกซื้อแบบที่ <strong class="text-amber-700">ประหยัดคุ้มค่าที่สุด</strong>!
+                </p>
+
+                <!-- Comparison Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <!-- Option A -->
+                    <div id="opt-a-card" onclick="selectPromo('A')" class="cursor-pointer border-3 border-slate-300 hover:border-amber-500 bg-amber-50/50 p-4 rounded-2xl transition relative group">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-extrabold text-sm px-2 py-0.5 rounded bg-blue-600 text-white">โปรโมชัน A</span>
+                            <span class="text-2xl">🎁</span>
+                        </div>
+                        <h4 class="font-bold text-slate-800 text-base">กล่องละ 20 บาท "ซื้อ 2 แถม 1"</h4>
+                        <div class="mt-3 text-xs bg-white p-2.5 rounded-xl border border-amber-200 text-slate-600 space-y-1">
+                            <p>• จ่ายเงินซื้อ: <strong>2 กล่อง = 40 บาท</strong></p>
+                            <p>• ได้ของทั้งหมด: <strong>3 กล่อง</strong></p>
+                            <div class="pt-1.5 border-t border-slate-100 flex items-center justify-between">
+                                <span>ราคาเฉลี่ยต่อกล่อง:</span>
+                                <span class="font-bold text-slate-900 bg-amber-100 px-2 py-0.5 rounded">40 ÷ 3 ≈ <strong>13.33</strong> บาท</span>
+                            </div>
+                        </div>
+                        <div class="mt-3 flex items-center text-xs text-amber-700 font-semibold">
+                            <input type="radio" name="promo_select" id="radio-a" class="mr-2 h-4 w-4 text-amber-600">
+                            คลิกเพื่อเลือกโปรนี้
+                        </div>
+                    </div>
+
+                    <!-- Option B -->
+                    <div id="opt-b-card" onclick="selectPromo('B')" class="cursor-pointer border-3 border-slate-300 hover:border-amber-500 bg-amber-50/50 p-4 rounded-2xl transition relative group">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-extrabold text-sm px-2 py-0.5 rounded bg-purple-600 text-white">โปรโมชัน B</span>
+                            <span class="text-2xl">🏷️</span>
+                        </div>
+                        <h4 class="font-bold text-slate-800 text-base">กล่องละ 18 บาท "ลดทันที 10%"</h4>
+                        <div class="mt-3 text-xs bg-white p-2.5 rounded-xl border border-amber-200 text-slate-600 space-y-1">
+                            <p>• ราคาเต็ม: <strong>18 บาท</strong></p>
+                            <p>• ส่วนลด 10%: <strong>ลด 1.80 บาท</strong></p>
+                            <div class="pt-1.5 border-t border-slate-100 flex items-center justify-between">
+                                <span>ราคาเฉลี่ยต่อกล่อง:</span>
+                                <span class="font-bold text-slate-900 bg-amber-100 px-2 py-0.5 rounded">18 - 1.80 = <strong>16.20</strong> บาท</span>
+                            </div>
+                        </div>
+                        <div class="mt-3 flex items-center text-xs text-amber-700 font-semibold">
+                            <input type="radio" name="promo_select" id="radio-b" class="mr-2 h-4 w-4 text-amber-600">
+                            คลิกเพื่อเลือกโปรนี้
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                    <p class="text-xs text-slate-500">
+                        <i class="fa-solid fa-lightbulb text-yellow-500 mr-1"></i> คำแนะนำ: มองหารูปแบบ "ต้นทุนต่อ 1 กล่อง" ให้ต่ำที่สุด
+                    </p>
+                    <button id="s2-submit-btn" onclick="checkStage2()" disabled class="arcade-btn bg-slate-300 cursor-not-allowed text-white font-bold py-2.5 px-6 rounded-xl text-sm w-full sm:w-auto">
+                        ยืนยันการเลือก <i class="fa-solid fa-arrow-right ml-1"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STAGE 3: ALGORITHM DESIGN & DEBUGGING -->
+        <div id="stage-3" class="w-full max-w-4xl hidden">
+            <div class="bg-white arcade-box rounded-2xl p-4 md:p-6">
+                <!-- Header of Stage 3 -->
+                <div class="flex flex-wrap items-center justify-between border-b pb-3 mb-3 gap-2">
+                    <div>
+                        <span class="px-2.5 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-lg border border-emerald-300">
+                            ด่านที่ 3 : Algorithm Design & Debugging
+                        </span>
+                        <h2 class="text-xl md:text-2xl font-black text-slate-800 mt-1">🤖 ออกแบบโค้ดรถเข็นช้อปปิ้ง</h2>
+                    </div>
+                    <!-- Live Stats in Stage 3 -->
+                    <div class="flex items-center gap-2">
+                        <div class="bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-300 text-xs">
+                            <span class="text-slate-500">งบประมาณ:</span>
+                            <span id="budget-display" class="font-extrabold text-emerald-700 font-mono text-sm">300฿</span>
+                        </div>
+                        <div class="bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-300 text-xs">
+                            <span class="text-slate-500">หยิบของ:</span>
+                            <span id="collected-items-display" class="font-extrabold text-blue-700 font-mono text-sm">0/2 รายการ</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mission Criteria Notice -->
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-2.5 rounded text-xs text-blue-900 mb-4 flex items-start gap-2">
+                    <i class="fa-solid fa-bullseye mt-0.5 text-blue-600"></i>
+                    <div>
+                        <strong>เงื่อนไขภารกิจ:</strong> เรียงบล็อกคำสั่งให้รถเข็น 🛒 เดินไปหยิบ <strong>ข้าวสาร (120฿)</strong> และ <strong>ไข่ไก่ (80฿)</strong> 
+                        จากนั้นใช้เงื่อนไขตรวจสอบ ถ้าเงินเหลือ &gt; 50฿ ให้ซื้อ <strong>ขนมเพิ่ม (40฿)</strong> แล้วเดินทางเข้า <strong>จุดจ่ายเงิน (CHECKOUT)</strong> อย่างถูกต้อง!
+                    </div>
+                </div>
+
+                <!-- Simulation Work Area: Grid & Code Workspace -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                    <!-- 5x5 Map Grid (Left) -->
+                    <div class="lg:col-span-6 flex flex-col items-center">
+                        <div class="w-full flex items-center justify-between mb-1.5 text-xs font-bold text-slate-600">
+                            <span><i class="fa-solid fa-map mr-1"></i> ผังซูเปอร์มาร์เก็ต (5x5)</span>
+                            <span id="sim-status" class="text-emerald-600 font-normal">พร้อมรันคำสั่ง</span>
+                        </div>
+                        <div id="grid-board" class="w-full aspect-square max-w-[340px] bg-slate-800 p-1.5 rounded-xl grid grid-cols-5 grid-rows-5 gap-1 shadow-inner border-2 border-slate-900">
+                            <!-- 25 Cells generated dynamically -->
+                        </div>
+                        <!-- Legend -->
+                        <div class="flex flex-wrap gap-2 text-[10px] text-slate-500 mt-2 justify-center">
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-white rounded border border-slate-300 inline-block"></span> ทางเดิน</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-red-100 rounded border border-red-300 inline-block"></span> เชลฟ์วางของ(ทึบ)</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-emerald-400 rounded inline-block"></span> แคชเชียร์</span>
+                        </div>
+                    </div>
+
+                    <!-- Command Sequence Builder (Right) -->
+                    <div class="lg:col-span-6 flex flex-col justify-between">
+                        <!-- Available Blocks Palette -->
+                        <div>
+                            <span class="text-xs font-bold text-slate-700 block mb-1.5">
+                                <i class="fa-solid fa-cubes-stacked mr-1"></i> คลังบล็อกคำสั่ง (คลิกเพื่อเพิ่มเข้าลิสต์)
+                            </span>
+                            <div class="grid grid-cols-2 gap-1.5 mb-3">
+                                <button onclick="addCommand('FORWARD')" class="arcade-btn bg-sky-500 text-white font-semibold py-1.5 px-2 rounded-lg text-xs flex items-center justify-center gap-1 hover:bg-sky-600">
+                                    <i class="fa-solid fa-arrow-up"></i> [เดินหน้า 1 ช่อง]
+                                </button>
+                                <button onclick="addCommand('TURN_RIGHT')" class="arcade-btn bg-indigo-500 text-white font-semibold py-1.5 px-2 rounded-lg text-xs flex items-center justify-center gap-1 hover:bg-indigo-600">
+                                    <i class="fa-solid fa-rotate-right"></i> [เลี้ยวขวา 90°]
+                                </button>
+                                <button onclick="addCommand('TURN_LEFT')" class="arcade-btn bg-indigo-500 text-white font-semibold py-1.5 px-2 rounded-lg text-xs flex items-center justify-center gap-1 hover:bg-indigo-600">
+                                    <i class="fa-solid fa-rotate-left"></i> [เลี้ยวซ้าย 90°]
+                                </button>
+                                <button onclick="addCommand('PICKUP')" class="arcade-btn bg-amber-500 text-white font-semibold py-1.5 px-2 rounded-lg text-xs flex items-center justify-center gap-1 hover:bg-amber-600">
+                                    <i class="fa-solid fa-hand"></i> [หยิบสินค้าในช่อง]
+                                </button>
+                                <button onclick="addCommand('CHECK_BUDGET')" class="arcade-btn bg-fuchsia-600 text-white font-semibold py-1.5 px-2 rounded-lg text-xs col-span-2 flex items-center justify-center gap-1 hover:bg-fuchsia-700">
+                                    <i class="fa-solid fa-code-branch"></i> [ถ้า เงินเหลือ &gt; 50฿ : ซื้อขนมเพิ่ม]
+                                </button>
+                            </div>
+
+                            <!-- Execution Pipeline Container -->
+                            <div class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+                                <span><i class="fa-solid fa-list-ol mr-1"></i> ลำดับอัลกอริทึมของคุณ:</span>
+                                <button onclick="clearCommands()" class="text-red-500 hover:text-red-700 font-normal text-[11px] underline">
+                                    <i class="fa-solid fa-trash-can mr-1"></i>ล้างทั้งหมด
+                                </button>
+                            </div>
+
+                            <div id="algorithm-list" class="bg-slate-100 border-2 border-slate-300 rounded-xl p-2 min-h-[145px] max-h-[160px] overflow-y-auto space-y-1 shadow-inner text-xs">
+                                <div id="empty-hint" class="text-slate-400 text-center py-8">
+                                    ยังไม่มีคำสั่ง คลิกปุ่มด้านบนเพื่อวางบล็อกอัลกอริทึม
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Control Buttons -->
+                        <div class="mt-3 flex gap-2">
+                            <button id="run-btn" onclick="executeAlgorithm()" class="arcade-btn bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl flex-1 flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-play"></i> Run Algorithm
+                            </button>
+                            <button id="reset-sim-btn" onclick="resetSimulator()" class="arcade-btn bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 px-3 rounded-xl flex items-center justify-center" title="รีเซ็ตตำแหน่งเริ่มต้น">
+                                <i class="fa-solid fa-rotate"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VICTORY FINAL SCREEN -->
+        <div id="victory-screen" class="w-full max-w-2xl bg-white arcade-box rounded-2xl p-6 md:p-8 text-center hidden">
+            <div class="text-6xl mb-3 animate-bounce">🏆</div>
+            <h2 class="text-2xl md:text-3xl font-black text-slate-900 mb-1">ยินดีด้วย! คุณผ่านหลักสูตร Smart Shopper</h2>
+            <p class="text-emerald-600 font-bold text-base mb-4">ปรมาจารย์นักคิดเชิงคำนวณระดับ ม.1</p>
+
+            <div class="bg-yellow-50 border-2 border-yellow-300 rounded-2xl p-4 mb-6 text-left space-y-2">
+                <h4 class="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+                    <i class="fa-solid fa-award text-yellow-600"></i> สรุปทักษะ Computational Thinking ที่หนูๆ ได้ฝึกฝนวันนี้:
+                </h4>
+                <ul class="text-xs text-slate-600 space-y-1.5 list-disc pl-5">
+                    <li><strong>Abstraction:</strong> ไม่ถูกป้ายโฆษณาลวงตา คัดเลือกเฉพาะราคาและส่วนลดมาคำนวณเงิน</li>
+                    <li><strong>Pattern Recognition & Decomposition:</strong> แยกส่วนโปรโมชันซับซ้อน คำนวณหาราคาเฉลี่ยต่อหน่วยเพื่อความประหยัดสูงสุด</li>
+                    <li><strong>Algorithm Design:</strong> วางลำดับขั้นตอนอย่างมีเหตุผล สั่งการรถเข็นให้เคลื่อนที่อย่างมีประสิทธิภาพ</li>
+                    <li><strong>Debugging:</strong> วิเคราะห์ข้อผิดพลาดและปรับแก้โค้ดจนบรรลุเป้าหมายสำเร็จ</li>
+                </ul>
+            </div>
+
+            <button onclick="restartFullGame()" class="arcade-btn bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-6 py-3 rounded-xl inline-flex items-center gap-2">
+                <i class="fa-solid fa-rotate-right"></i> เล่นใหม่อีกครั้ง
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Educational Debrief Modal (Alert replacement) -->
+    <div id="debrief-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white arcade-box rounded-2xl max-w-md w-full p-6 animate-floating text-left">
+            <div class="flex items-center gap-3 mb-3">
+                <div id="modal-icon-badge" class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl border-2 border-slate-900 shadow">
+                    💡
+                </div>
+                <div>
+                    <span id="modal-tag" class="text-[11px] font-extrabold uppercase px-2 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-200">
+                        Computational Thinking
+                    </span>
+                    <h3 id="modal-title" class="text-lg font-black text-slate-800 mt-0.5">ยอดเยี่ยมมาก!</h3>
+                </div>
+            </div>
+
+            <div id="modal-explanation" class="text-xs md:text-sm text-slate-600 bg-slate-50 border border-slate-200 p-3.5 rounded-xl leading-relaxed mb-5">
+                <!-- Text populated dynamically -->
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <button id="modal-action-btn" onclick="nextStageFromModal()" class="arcade-btn bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm px-5 py-2.5 rounded-xl w-full flex items-center justify-center gap-2">
+                    <span>ลุยต่อด่านถัดไป</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error / Hint Modal for Debugging Feedback -->
+    <div id="feedback-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white arcade-box rounded-2xl max-w-sm w-full p-5 text-center">
+            <div id="fb-icon" class="text-4xl mb-2">🤔</div>
+            <h3 id="fb-title" class="text-base font-black text-slate-800 mb-1">ยังไม่ถูกต้องนะ</h3>
+            <p id="fb-desc" class="text-xs text-slate-600 mb-4 leading-relaxed"></p>
+            <button onclick="closeFeedbackModal()" class="arcade-btn bg-slate-800 text-white text-xs font-bold px-5 py-2 rounded-xl w-full">
+                ลองอีกครั้ง
+            </button>
+        </div>
+    </div>
+
+    <footer class="text-center py-3 text-slate-500 text-xs border-t border-slate-200 bg-white/70">
+        สื่อการสอนวิชาวิทยาการคำนวณ ระดับชั้นมัธยมศึกษาปีที่ 1 • หน่วยการเรียนรู้: แนวคิดเชิงคำนวณ (Computational Thinking)
+    </footer>
+
+    <script>
+        /* ==========================================================
+           GLOBAL GAME STATE & PEDAGOGICAL PROGRESS TRACKER
+           ========================================================== */
+        const gameState = {
+            currentStage: 0, // 0: Intro, 1: Abstraction, 2: Pattern, 3: Algorithm, 4: Done
+            score: 0,
+            stage1Selected: [],
+            stage2Selection: null,
+            commands: [],
+            isSimulating: false,
+            // Stage 3 Environment Configuration
+            robot: { x: 0, y: 0, dir: 'EAST' }, // dir: NORTH, EAST, SOUTH, WEST
+            budget: 300,
+            hasRice: false,
+            hasEggs: false,
+            hasSnack: false,
+            snackPurchased: false
+        };
+
+        // Sound synthesizer fallback using Web Audio API for rewarding interaction (No external audio file dependencies)
+        const AudioFX = {
+            ctx: null,
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContext) this.ctx = new AudioContext();
+                }
+            },
+            playBeep(freq = 440, type = 'sine', duration = 0.15) {
+                try {
+                    this.init();
+                    if (!this.ctx) return;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e) { /* ignore silent audio errors */ }
+            },
+            success() {
+                this.playBeep(523.25, 'triangle', 0.12);
+                setTimeout(() => this.playBeep(659.25, 'triangle', 0.12), 100);
+                setTimeout(() => this.playBeep(783.99, 'triangle', 0.25), 200);
+            },
+            error() {
+                this.playBeep(220, 'sawtooth', 0.2);
+                setTimeout(() => this.playBeep(180, 'sawtooth', 0.25), 150);
+            }
+        };
+
+        /* Update global CT mastery progress */
+        function updateProgress(points) {
+            gameState.score = Math.min(100, gameState.score + points);
+            document.getElementById('ct-progress-bar').style.width = gameState.score + '%';
+            document.getElementById('score-text').innerText = gameState.score + '%';
+        }
+
+        /* General Feedback Modal (Replacement for alert) */
+        function showFeedback(title, desc, icon = '🤔') {
+            AudioFX.error();
+            document.getElementById('fb-title').innerText = title;
+            document.getElementById('fb-desc').innerText = desc;
+            document.getElementById('fb-icon').innerText = icon;
+            document.getElementById('feedback-modal').classList.remove('hidden');
+        }
+        function closeFeedbackModal() {
+            document.getElementById('feedback-modal').classList.add('hidden');
+        }
+
+        // Stage 1 Data Elements (mix of relevant & irrelevant attributes)
+        const stage1Attributes = [
+            { id: 'price', label: '💰 ราคาปกติ 120 บาท', relevant: true, category: 'การเงิน' },
+            { id: 'discount', label: '🏷️ ส่วนลดสมาชิกลด 20 บาท', relevant: true, category: 'การเงิน' },
+            { id: 'brand', label: '🥣 แบรนด์ "ซูเปอร์แฮปปี้"', relevant: false, category: 'การตลาด' },
+            { id: 'color', label: '🎨 กล่องสีเหลืองสดใส ลายการ์ตูน', relevant: false, category: 'รูปลักษณ์ภายนอก' },
+            { id: 'slogan', label: '⭐ สโลแกน "กรอบอร่อย โดนใจทุกเช้า"', relevant: false, category: 'โฆษณา' },
+            { id: 'halal', label: '🍃 ปริมาณสุทธิ 350 กรัม', relevant: false, category: 'ปริมาณ' }
+        ];
+
+        function initStage1() {
+            gameState.stage1Selected = [];
+            const container = document.getElementById('tags-container');
+            container.innerHTML = '';
+
+            // Shuffle tags
+            const shuffled = [...stage1Attributes].sort(() => Math.random() - 0.5);
+
+            shuffled.forEach(item => {
+                const btn = document.createElement('button');
+                btn.id = 'tag-' + item.id;
+                btn.className = "arcade-btn bg-white hover:bg-slate-50 border-2 border-slate-800 p-3 rounded-xl text-left flex items-center justify-between text-xs sm:text-sm font-semibold transition";
+                btn.innerHTML = `
+                    <span>${item.label}</span>
+                    <span class="w-5 h-5 rounded-full border-2 border-slate-400 flex items-center justify-center check-circle text-[10px] text-white"></span>
+                `;
+                btn.onclick = () => toggleStage1Tag(item.id);
+                container.appendChild(btn);
+            });
+            updateStage1UI();
+        }
+
+        function toggleStage1Tag(id) {
+            AudioFX.playBeep(400, 'sine', 0.05);
+            const index = gameState.stage1Selected.indexOf(id);
+            if (index > -1) {
+                gameState.stage1Selected.splice(index, 1);
+            } else {
+                if (gameState.stage1Selected.length >= 2) {
+                    showFeedback("เลือกได้สูงสุด 2 อย่าง", "ให้น้องๆ เลือกเฉพาะ 2 ข้อมูลที่จำเป็นต่อการคิดยอดเงินที่ต้องจ่ายจริงเท่านั้นครับ");
+                    return;
+                }
+                gameState.stage1Selected.push(id);
+            }
+            updateStage1UI();
+        }
+
+        function updateStage1UI() {
+            stage1Attributes.forEach(item => {
+                const btn = document.getElementById('tag-' + item.id);
+                if (!btn) return;
+                const circle = btn.querySelector('.check-circle');
+                if (gameState.stage1Selected.includes(item.id)) {
+                    btn.classList.add('bg-purple-100', 'border-purple-600', 'text-purple-900');
+                    circle.classList.add('bg-purple-600', 'border-purple-600');
+                    circle.innerHTML = '<i class="fa-solid fa-check"></i>';
+                } else {
+                    btn.classList.remove('bg-purple-100', 'border-purple-600', 'text-purple-900');
+                    circle.classList.remove('bg-purple-600', 'border-purple-600');
+                    circle.innerHTML = '';
+                }
+            });
+
+            document.getElementById('s1-selected-count').innerText = gameState.stage1Selected.length;
+            const submitBtn = document.getElementById('s1-submit-btn');
+            if (gameState.stage1Selected.length === 2) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('bg-slate-300', 'cursor-not-allowed');
+                submitBtn.classList.add('bg-purple-600', 'hover:bg-purple-700');
+            } else {
+                submitBtn.disabled = true;
+                submitBtn.classList.add('bg-slate-300', 'cursor-not-allowed');
+                submitBtn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
+            }
+        }
+
+        function checkStage1() {
+            const hasPrice = gameState.stage1Selected.includes('price');
+            const hasDiscount = gameState.stage1Selected.includes('discount');
+
+            if (hasPrice && hasDiscount) {
+                AudioFX.success();
+                updateProgress(35);
+                triggerConfetti();
+                showDebrief(
+                    "ด่านที่ 1 ผ่านฉลุย!",
+                    "Abstraction (การกำหนดสาระสำคัญ)",
+                    "ถูกต้องเป๊ะเลย! ข้อมูลอย่างสีกล่อง สโลแกน หรือชื่อแบรนด์ เป็นรายละเอียดที่ไม่ส่งผลต่อการคิดเงิน น้องๆ จึงใช้แนวคิด <b>Abstraction</b> คัดเฉพาะ 'ราคา' และ 'ส่วนลด' ซึ่งเป็นแก่นสำคัญในการคำนวณค่าใช้จ่ายจริงได้ยอดเยี่ยมมากครับ!",
+                    "bg-purple-100 text-purple-800 border-purple-300",
+                    "🏷️"
+                );
+            } else {
+                showFeedback(
+                    "ลองคิดใหม่อีกนิด!",
+                    "เป้าหมายของเราคือ 'คำนวณเงินที่ต้องจ่าย' ข้อมูลสีสัน หรือสโลแกน ช่วยคิดเงินได้หรือไม่? ลองตัดสิ่งที่ไม่ใช่ออกดูนะ!"
+                );
+            }
+        }
+
+        function selectPromo(option) {
+            AudioFX.playBeep(450, 'sine', 0.05);
+            gameState.stage2Selection = option;
+
+            const cardA = document.getElementById('opt-a-card');
+            const cardB = document.getElementById('opt-b-card');
+            const radioA = document.getElementById('radio-a');
+            const radioB = document.getElementById('radio-b');
+
+            if (option === 'A') {
+                cardA.classList.add('border-amber-500', 'bg-amber-100/60', 'ring-2', 'ring-amber-400');
+                cardB.classList.remove('border-amber-500', 'bg-amber-100/60', 'ring-2', 'ring-amber-400');
+                radioA.checked = true;
+                radioB.checked = false;
+            } else {
+                cardB.classList.add('border-amber-500', 'bg-amber-100/60', 'ring-2', 'ring-amber-400');
+                cardA.classList.remove('border-amber-500', 'bg-amber-100/60', 'ring-2', 'ring-amber-400');
+                radioB.checked = true;
+                radioA.checked = false;
+            }
+
+            const submitBtn = document.getElementById('s2-submit-btn');
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('bg-slate-300', 'cursor-not-allowed');
+            submitBtn.classList.add('bg-amber-500', 'hover:bg-amber-600');
+        }
+
+        function checkStage2() {
+            if (gameState.stage2Selection === 'A') {
+                AudioFX.success();
+                updateProgress(35);
+                triggerConfetti();
+                showDebrief(
+                    "เก่งมาก! คิดเลขเปรียบเทียบได้เฉียบคม",
+                    "Pattern Recognition & Decomposition",
+                    "โปรโมชัน A คุ้มค่าที่สุดจริง! เฉลี่ยเพียงกล่องละ <b>13.33 บาท</b> (เทียบกับโปร B กล่องละ 16.20 บาท) น้องๆ ได้ใช้ <b>Decomposition</b> แยกโปรโมชันออกเป็นจำนวนเงินและจำนวนกล่อง แล้วใช้ <b>Pattern Recognition</b> แปลงให้กลายเป็นรูปแบบ 'ราคาต่อ 1 หน่วย' เพื่อเทียบกันได้อย่างแม่นยำ!",
+                    "bg-amber-100 text-amber-800 border-amber-300",
+                    "🥛"
+                );
+            } else {
+                showFeedback(
+                    "โปรโมชันนี้ยังแพงกว่าอยู่นะ!",
+                    "ลองสังเกตราคาต่อกล่องอีกครั้ง: โปร A จ่าย 40 บาท ได้ 3 กล่อง (ตกกล่องละ ~13.33 บาท) ขณะที่โปร B กล่องละ 16.20 บาทนะ!"
+                );
+            }
+        }
+
+        /*
+           5x5 Supermarket Grid Blueprint:
+           (0,0)=Start/Cart [S]
+           (1,2)=Rice (120฿) [R]
+           (3,1)=Eggs (80฿)  [E]
+           (2,4)=Checkout [C]
+           Obstacles (Shelves): (1,1), (3,3), (1,3), (3,2)
+        */
+        const MAP_SIZE = 5;
+        const GRID_LAYOUT = {
+            start: { x: 0, y: 0 },
+            rice: { x: 1, y: 2, price: 120, name: 'ข้าวสารหอมมะลิ' },
+            eggs: { x: 3, y: 1, price: 80, name: 'ไข่ไก่เบอร์ 1' },
+            checkout: { x: 4, y: 4, name: 'แคชเชียร์' },
+            obstacles: [
+                { x: 1, y: 1 }, { x: 3, y: 2 }, { x: 1, y: 3 }, { x: 3, y: 3 }
+            ]
+        };
+
+        function renderGrid() {
+            const board = document.getElementById('grid-board');
+            board.innerHTML = '';
+
+            for (let y = 0; y < MAP_SIZE; y++) {
+                for (let x = 0; x < MAP_SIZE; x++) {
+                    const cell = document.createElement('div');
+                    cell.id = `cell-${x}-${y}`;
+                    cell.className = 'grid-cell rounded-lg flex flex-col items-center justify-center relative text-xs font-bold transition-all';
+
+                    // Check Cell Identity
+                    const isObstacle = GRID_LAYOUT.obstacles.some(o => o.x === x && o.y === y);
+                    const isRice = GRID_LAYOUT.rice.x === x && GRID_LAYOUT.rice.y === y;
+                    const isEggs = GRID_LAYOUT.eggs.x === x && GRID_LAYOUT.eggs.y === y;
+                    const isCheckout = GRID_LAYOUT.checkout.x === x && GRID_LAYOUT.checkout.y === y;
+
+                    if (isObstacle) {
+                        cell.classList.add('bg-red-950/70', 'border', 'border-red-900', 'text-red-400');
+                        cell.innerHTML = '<span class="text-sm">🧱</span><span class="text-[9px] text-red-300">เชลฟ์</span>';
+                    } else if (isRice) {
+                        cell.classList.add('bg-amber-100', 'border-2', 'border-amber-400');
+                        cell.innerHTML = `
+                            <span class="text-base pulse-item">🌾</span>
+                            <span class="text-[9px] font-bold text-amber-900">ข้าว 120฿</span>
+                        `;
+                    } else if (isEggs) {
+                        cell.classList.add('bg-orange-100', 'border-2', 'border-orange-400');
+                        cell.innerHTML = `
+                            <span class="text-base pulse-item">🥚</span>
+                            <span class="text-[9px] font-bold text-orange-900">ไข่ 80฿</span>
+                        `;
+                    } else if (isCheckout) {
+                        cell.classList.add('bg-emerald-400', 'border-2', 'border-emerald-600', 'text-emerald-950');
+                        cell.innerHTML = `
+                            <span class="text-base">💳</span>
+                            <span class="text-[9px] font-black uppercase">จ่ายเงิน</span>
+                        `;
+                    } else {
+                        // Walkable Aisle
+                        cell.classList.add('bg-slate-700/80', 'border', 'border-slate-600');
+                    }
+
+                    board.appendChild(cell);
+                }
+            }
+            updateRobotElement();
+        }
+
+        function updateRobotElement() {
+            // Remove previous robot marker
+            const oldBot = document.getElementById('robot-avatar');
+            if (oldBot) oldBot.remove();
+
+            const currentCell = document.getElementById(`cell-${gameState.robot.x}-${gameState.robot.y}`);
+            if (!currentCell) return;
+
+            const bot = document.createElement('div');
+            bot.id = 'robot-avatar';
+            bot.className = 'absolute z-20 flex items-center justify-center transition-all duration-300';
+            
+            // Rotation based on dir
+            let rotClass = 'cart-east';
+            if (gameState.robot.dir === 'NORTH') rotClass = 'cart-north';
+            if (gameState.robot.dir === 'SOUTH') rotClass = 'cart-south';
+            if (gameState.robot.dir === 'WEST') rotClass = 'cart-west';
+
+            bot.innerHTML = `
+                <div class="${rotClass} transition-transform duration-200 text-2xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
+                    🛒
+                </div>
+            `;
+            currentCell.appendChild(bot);
+        }
+
+        /* Algorithm sequence builder */
+        function addCommand(type) {
+            if (gameState.isSimulating) return;
+            AudioFX.playBeep(350, 'sine', 0.04);
+            gameState.commands.push(type);
+            renderCommandList();
+        }
+
+        function removeCommand(idx) {
+            if (gameState.isSimulating) return;
+            AudioFX.playBeep(280, 'sine', 0.05);
+            gameState.commands.splice(idx, 1);
+            renderCommandList();
+        }
+
+        function clearCommands() {
+            if (gameState.isSimulating) return;
+            gameState.commands = [];
+            renderCommandList();
+        }
+
+        function renderCommandList() {
+            const list = document.getElementById('algorithm-list');
+            list.innerHTML = '';
+
+            if (gameState.commands.length === 0) {
+                list.innerHTML = `
+                    <div id="empty-hint" class="text-slate-400 text-center py-8">
+                        ยังไม่มีคำสั่ง คลิกปุ่มด้านบนเพื่อวางบล็อกอัลกอริทึม
+                    </div>`;
+                return;
+            }
+
+            gameState.commands.forEach((cmd, idx) => {
+                const item = document.createElement('div');
+                item.id = `cmd-item-${idx}`;
+                item.className = "flex items-center justify-between bg-white border border-slate-300 px-2.5 py-1.5 rounded-lg shadow-sm font-mono text-xs";
+                
+                let label = '';
+                let badgeClass = '';
+                if (cmd === 'FORWARD') { label = '🚶 1. เดินหน้า 1 ช่อง'; badgeClass = 'text-sky-700 bg-sky-50 border-sky-200'; }
+                else if (cmd === 'TURN_RIGHT') { label = '⤵️ 2. เลี้ยวขวา (90°)'; badgeClass = 'text-indigo-700 bg-indigo-50 border-indigo-200'; }
+                else if (cmd === 'TURN_LEFT') { label = '⤴️ 3. เลี้ยวซ้าย (90°)'; badgeClass = 'text-indigo-700 bg-indigo-50 border-indigo-200'; }
+                else if (cmd === 'PICKUP') { label = '✋ 4. หยิบสินค้าในช่อง'; badgeClass = 'text-amber-700 bg-amber-50 border-amber-200'; }
+                else if (cmd === 'CHECK_BUDGET') { label = '⚡ 5. IF เงินเหลือ > 50฿ THEN ซื้อขนม(+40฿)'; badgeClass = 'text-fuchsia-700 bg-fuchsia-50 border-fuchsia-200'; }
+
+                item.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] bg-slate-200 text-slate-700 w-4 h-4 rounded-full flex items-center justify-center font-bold">${idx + 1}</span>
+                        <span class="font-semibold text-slate-800">${label}</span>
+                    </div>
+                    <button onclick="removeCommand(${idx})" class="text-slate-400 hover:text-red-500 p-1" title="ลบคำสั่งนี้">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                `;
+                list.appendChild(item);
+            });
+
+            // Auto scroll to bottom of command list
+            list.scrollTop = list.scrollHeight;
+        }
+
+        function resetSimulator() {
+            gameState.robot = { x: 0, y: 0, dir: 'EAST' };
+            gameState.budget = 300;
+            gameState.hasRice = false;
+            gameState.hasEggs = false;
+            gameState.hasSnack = false;
+            gameState.isSimulating = false;
+
+            document.getElementById('budget-display').innerText = '300฿';
+            document.getElementById('collected-items-display').innerText = '0/2 รายการ';
+            document.getElementById('sim-status').innerText = 'พร้อมรันคำสั่ง';
+            document.getElementById('sim-status').className = 'text-emerald-600 font-normal';
+
+            // Reset visual highlight of commands
+            document.querySelectorAll('#algorithm-list > div').forEach(el => {
+                el.classList.remove('ring-2', 'ring-emerald-500', 'bg-emerald-50');
+            });
+
+            renderGrid();
+        }
+
+        async function executeAlgorithm() {
+            if (gameState.isSimulating) return;
+            if (gameState.commands.length === 0) {
+                showFeedback("ยังไม่มีคำสั่งในลิสต์", "กรุณาคลิกเลือกบล็อกคำสั่งก่อนกด Run Algorithm นะครับ!");
+                return;
+            }
+
+            resetSimulator();
+            gameState.isSimulating = true;
+            document.getElementById('run-btn').disabled = true;
+            document.getElementById('run-btn').classList.add('opacity-50', 'cursor-not-allowed');
+            document.getElementById('sim-status').innerText = 'กำลังทำงาน...';
+            document.getElementById('sim-status').className = 'text-blue-600 font-bold';
+
+            const directions = ['NORTH', 'EAST', 'SOUTH', 'WEST'];
+
+            for (let i = 0; i < gameState.commands.length; i++) {
+                const cmd = gameState.commands[i];
+
+                // Visual debug highlight
+                const itemEl = document.getElementById(`cmd-item-${i}`);
+                if (itemEl) {
+                    itemEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    itemEl.classList.add('ring-2', 'ring-emerald-500', 'bg-emerald-50');
+                }
+
+                await new Promise(r => setTimeout(r, 450)); // Step delay for visible animation
+
+                const currentDirIdx = directions.indexOf(gameState.robot.dir);
+
+                if (cmd === 'TURN_RIGHT') {
+                    AudioFX.playBeep(300, 'sine', 0.05);
+                    const nextDirIdx = (currentDirIdx + 1) % 4;
+                    gameState.robot.dir = directions[nextDirIdx];
+                    updateRobotElement();
+                } else if (cmd === 'TURN_LEFT') {
+                    AudioFX.playBeep(300, 'sine', 0.05);
+                    const nextDirIdx = (currentDirIdx + 3) % 4;
+                    gameState.robot.dir = directions[nextDirIdx];
+                    updateRobotElement();
+                } else if (cmd === 'FORWARD') {
+                    let nextX = gameState.robot.x;
+                    let nextY = gameState.robot.y;
+
+                    if (gameState.robot.dir === 'NORTH') nextY--;
+                    if (gameState.robot.dir === 'SOUTH') nextY++;
+                    if (gameState.robot.dir === 'EAST') nextX++;
+                    if (gameState.robot.dir === 'WEST') nextX--;
+
+                    // 1. Boundary Check
+                    if (nextX < 0 || nextX >= MAP_SIZE || nextY < 0 || nextY >= MAP_SIZE) {
+                        handleSimulationFail("รถเข็นชนขอบกำแพง!", "อัลกอริทึมพาเดินหลุดออกจากแผนที่ซูเปอร์มาร์เก็ต กดปุ่ม Debug เพื่อปรับแก้คำสั่งนะ!");
+                        return;
+                    }
+
+                    // 2. Obstacle Check
+                    const hitShelf = GRID_LAYOUT.obstacles.some(o => o.x === nextX && o.y === nextY);
+                    if (hitShelf) {
+                        handleSimulationFail("รถเข็นชนเชลฟ์วางของ!", "ทางข้างหน้ามีชั้นวางของขวางอยู่ ต้องเลี้ยวหลบสิ่งกีดขวางก่อนเดินหน้านะครับ");
+                        return;
+                    }
+
+                    // Move success
+                    AudioFX.playBeep(420, 'sine', 0.05);
+                    gameState.robot.x = nextX;
+                    gameState.robot.y = nextY;
+                    updateRobotElement();
+                } else if (cmd === 'PICKUP') {
+                    // Check if current cell has items
+                    if (gameState.robot.x === GRID_LAYOUT.rice.x && gameState.robot.y === GRID_LAYOUT.rice.y) {
+                        if (!gameState.hasRice) {
+                            AudioFX.playBeep(600, 'triangle', 0.15);
+                            gameState.hasRice = true;
+                            gameState.budget -= GRID_LAYOUT.rice.price;
+                            document.getElementById('budget-display').innerText = gameState.budget + '฿';
+                        }
+                    } else if (gameState.robot.x === GRID_LAYOUT.eggs.x && gameState.robot.y === GRID_LAYOUT.eggs.y) {
+                        if (!gameState.hasEggs) {
+                            AudioFX.playBeep(600, 'triangle', 0.15);
+                            gameState.hasEggs = true;
+                            gameState.budget -= GRID_LAYOUT.eggs.price;
+                            document.getElementById('budget-display').innerText = gameState.budget + '฿';
+                        }
+                    } else {
+                        // Empty cell pickup warning
+                        AudioFX.playBeep(200, 'sawtooth', 0.1);
+                    }
+
+                    const count = (gameState.hasRice ? 1 : 0) + (gameState.hasEggs ? 1 : 0);
+                    document.getElementById('collected-items-display').innerText = `${count}/2 รายการ`;
+                } else if (cmd === 'CHECK_BUDGET') {
+                    // Conditional Branching Logic
+                    if (gameState.budget > 50) {
+                        AudioFX.playBeep(700, 'triangle', 0.2);
+                        gameState.hasSnack = true;
+                        gameState.budget -= 40; // Snack price
+                        document.getElementById('budget-display').innerText = gameState.budget + '฿ (ซื้อขนมสำเร็จ!)';
+                    }
+                }
+
+                if (itemEl) {
+                    itemEl.classList.remove('ring-2', 'ring-emerald-500', 'bg-emerald-50');
+                }
+            }
+
+            // End of execution: Validate Win Conditions
+            validateSimulationResult();
+        }
+
+        function handleSimulationFail(title, desc) {
+            AudioFX.error();
+            gameState.isSimulating = false;
+            document.getElementById('sim-status').innerText = 'พบข้อผิดพลาด (Bug)';
+            document.getElementById('sim-status').className = 'text-red-600 font-bold';
+            document.getElementById('run-btn').disabled = false;
+            document.getElementById('run-btn').classList.remove('opacity-50', 'cursor-not-allowed');
+
+            showFeedback(title, desc, '🚨');
+        }
+
+        function validateSimulationResult() {
+            gameState.isSimulating = false;
+            document.getElementById('run-btn').disabled = false;
+            document.getElementById('run-btn').classList.remove('opacity-50', 'cursor-not-allowed');
+
+            const isAtCheckout = (gameState.robot.x === GRID_LAYOUT.checkout.x && gameState.robot.y === GRID_LAYOUT.checkout.y);
+            const collectedAllRequired = gameState.hasRice && gameState.hasEggs;
+
+            if (!isAtCheckout) {
+                handleSimulationFail("ยังไม่ถึงจุดชำระเงิน!", "รถเข็นยังไม่ได้ไปหยุดที่ช่องแคชเชียร์ (ช่องมุมขวาล่าง) ลองเพิ่มคำสั่งเดินหน้าและเลี้ยวให้ถึงเป้าหมายนะครับ");
+                return;
+            }
+
+            if (!collectedAllRequired) {
+                let missing = [];
+                if (!gameState.hasRice) missing.push("ข้าวสาร");
+                if (!gameState.hasEggs) missing.push("ไข่ไก่");
+                handleSimulationFail("หยิบของไม่ครบตามเงื่อนไข!", `น้องๆ ยังไม่ได้หยิบ: ${missing.join(', ')} อย่าลืมเดินไปที่ช่องสินค้าแล้วใช้คำสั่ง [หยิบสินค้าในช่อง] ด้วยนะ!`);
+                return;
+            }
+
+            if (!gameState.hasSnack) {
+                handleSimulationFail("ลืมเงื่อนไขซื้อขนม!", "งบประมาณยังเหลือมากกว่า 50฿! อย่าลืมใส่บล็อกคำสั่ง [ถ้า เงินเหลือ > 50฿ : ซื้อขนมเพิ่ม] ในอัลกอริทึมด้วยนะครับ");
+                return;
+            }
+
+            // ALL CRITERIA MET! VICTORY FOR STAGE 3
+            AudioFX.success();
+            updateProgress(30); // Reach 100%
+            triggerConfetti();
+            document.getElementById('sim-status').innerText = 'ภารกิจสำเร็จ!';
+            document.getElementById('sim-status').className = 'text-emerald-600 font-bold';
+
+            showDebrief(
+                "สุดยอดโปรแกรมเมอร์!",
+                "Algorithm Design & Debugging",
+                "ยอดเยี่ยมมาก! น้องๆ สามารถเขียนอัลกอริทึมควบคุมรถเข็น หลบสิ่งกีดขวาง หยิบสินค้าจำเป็นครบถ้วน และใช้ 'คำสั่งแบบมีเงื่อนไข (Condition If-Then)' ตรวจสอบงบเพื่อซื้อขนมเพิ่มได้อย่างแม่นยำ!",
+                "bg-emerald-100 text-emerald-800 border-emerald-300",
+                "🤖"
+            );
+        }
+
+        function showDebrief(title, tag, text, tagStyle, icon) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-tag').innerText = tag;
+            document.getElementById('modal-tag').className = `text-[11px] font-extrabold uppercase px-2 py-0.5 rounded border ${tagStyle}`;
+            document.getElementById('modal-explanation').innerHTML = text;
+            document.getElementById('modal-icon-badge').innerText = icon;
+
+            const modalActionBtn = document.getElementById('modal-action-btn');
+            if (gameState.currentStage === 3) {
+                modalActionBtn.innerHTML = `<span>ดูสรุปผลการเรียนรู้</span> <i class="fa-solid fa-trophy ml-1"></i>`;
+            } else {
+                modalActionBtn.innerHTML = `<span>ลุยต่อด่านถัดไป</span> <i class="fa-solid fa-arrow-right ml-1"></i>`;
+            }
+
+            document.getElementById('debrief-modal').classList.remove('hidden');
+        }
+
+        function nextStageFromModal() {
+            document.getElementById('debrief-modal').classList.add('hidden');
+            if (gameState.currentStage === 1) {
+                goToStage(2);
+            } else if (gameState.currentStage === 2) {
+                goToStage(3);
+            } else if (gameState.currentStage === 3) {
+                goToStage(4); // Victory
+            }
+        }
+
+        function goToStage(stageNum) {
+            gameState.currentStage = stageNum;
+
+            // Hide all views
+            document.getElementById('intro-screen').classList.add('hidden');
+            document.getElementById('stage-1').classList.add('hidden');
+            document.getElementById('stage-2').classList.add('hidden');
+            document.getElementById('stage-3').classList.add('hidden');
+            document.getElementById('victory-screen').classList.add('hidden');
+
+            if (stageNum === 1) {
+                document.getElementById('stage-1').classList.remove('hidden');
+                document.getElementById('current-stage-badge').innerText = '1 / 3';
+                initStage1();
+            } else if (stageNum === 2) {
+                document.getElementById('stage-2').classList.remove('hidden');
+                document.getElementById('current-stage-badge').innerText = '2 / 3';
+            } else if (stageNum === 3) {
+                document.getElementById('stage-3').classList.remove('hidden');
+                document.getElementById('current-stage-badge').innerText = '3 / 3';
+                resetSimulator();
+                renderCommandList();
+            } else if (stageNum === 4) {
+                document.getElementById('victory-screen').classList.remove('hidden');
+                document.getElementById('current-stage-badge').innerText = 'สำเร็จ!';
+                triggerConfetti();
+            }
+        }
+
+        function startGame() {
+            AudioFX.init();
+            AudioFX.playBeep(500, 'sine', 0.1);
+            goToStage(1);
+        }
+
+        function restartFullGame() {
+            gameState.score = 0;
+            gameState.commands = [];
+            document.getElementById('ct-progress-bar').style.width = '0%';
+            document.getElementById('score-text').innerText = '0%';
+            goToStage(1);
+        }
+
+        /* Confetti particle celebration effect */
+        function triggerConfetti() {
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 75,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            }
+        }
+
+        // On window load
+        window.onload = function() {
+            // Setup ready
+        };
+    </script>
+</body>
+</html>
